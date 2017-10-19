@@ -50,27 +50,29 @@ def get_map_config(xref,yref,lat_min,lat_max,lon_min,lon_max):
   c_lat = (lat_max + lat_min)/2.
   c_lon = (lon_max + lon_min)/2.
   
+  # pixels over the cut-off
+  c_x, c_y = _web_mercator(c_lat,c_lon)
+  y_upper = c_y*2**zoom - yref/2.
+  # adjust zoom if needed
+  if y_upper < 0:
+    zoom = np.log2(yref/2./c_y)
+  
   return {'zoom':zoom, 
-          'x_min':x_min, 'x_max':x_max, 'y_min':y_min, 'y_max':y_max,
-          'c_lat':c_lat, 'c_lon':c_lon, 'xref':xref, 'yref':yref}
+          'c_lat':c_lat, 'c_lon':c_lon,
+          'xref':xref, 'yref':yref,
+          'c_x':c_x, 'c_y':c_y}
   
 def transform_data(lat,lon,map_config):
   """
-  Converts geographic coordinates into map coordinates suitable for plattting.
+  Converts geographic coordinates into map coordinates suitable for plotting.
   """
   
-  x,y = _web_mercator(lat,lon)
-  
-  x_min = map_config['x_min']
-  x_max = map_config['x_max']
-  y_min = map_config['y_min']
-  y_max = map_config['y_max']
   zoom = map_config['zoom']
   
-  x = (x - x_min)*2**zoom*2
-  x += (map_config['xref']*2 - (x_max - x_min)*2**zoom*2)/2 # center
-  y = (y - y_min)*2**zoom*2
-  y += (map_config['yref']*2 - (y_max - y_min)*2**zoom*2)/2-2 # center (the -2 is componsate for an offset that probably comes from rouding erros)
+  x,y = _web_mercator(lat,lon)
+
+  x = (x - map_config['c_x'])*2**zoom*2+map_config['xref']-1. # center, -1 is for zero based indexing
+  y = (y - map_config['c_y'])*2**zoom*2+map_config['yref']-1. 
   
   return x,y
   
